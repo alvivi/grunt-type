@@ -20,8 +20,8 @@ The key (destination) can be an unique path (supports
 and the value (source) should be a filepath or an array of filepaths (supports
 [minimatch](https://github.com/isaacs/minimatch)).
 
-As of v0.3.0, when copying to a directory you must add a trailing slash to the
-destination due to added support of single file copy.
+When compiling to a directory you **must** add a trailing slash to the
+destination.
 
 ##### options ```object```
 
@@ -38,14 +38,9 @@ by comparing all source filepaths left to right for a common pattern.
 
 ##### flatten ```boolean```
 
-This option performs a flat copy that dumps all the files into the root of the
-destination directory, overwriting files if they exist.
+This option performs a flat compilation that dumps all the files into the root
+of the destination directory, overwriting files if they exist.
 
-##### tsc ```strign```
-
-Path to the `tsc` TypeScript compiler. By default **grunt-type** uses the
-compiler installed in the system or a bundled version of the compiler (
-currently version ```0.8.x```).
 
 ##### comments ```boolean```
 
@@ -85,12 +80,18 @@ Select style checking options (examples ```'requireSemi:off'```
 ```'eqeqeq;bitwise:off'```). Valid checkig options are: `bitwise`,
 `blockInCompoundStmt`, `eqeqeq`, `forin`, `emptyBlocks`, `newMustBeUsed`,
 `requireSemi`, `assignmentInCond`, `eqnull`, `evalOK`, `innerScopeDeclEscape`,
-`funcInLoop`, `reDeclareLocal`, `literalSubscript`, `implicitAny`. This options
-are similar to [JsHint](http://www.jshint.com/docs/) options.
+`funcInLoop`, `reDeclareLocal`, `literalSubscript` and `implicitAny`. This
+options are similar to [JsHint](http://www.jshint.com/docs/) options.
 
 ##### target ```string```
 
 Specify ECMAScript target version: ```'ES3'``` (default), or ```'ES3'```.
+
+##### tsc ```string```
+
+Path to the `tsc` TypeScript compiler. By default, **grunt-type** uses the
+compiler installed in the system or a bundled version of the compiler (
+currently version ```0.8.x```).
 
 #### Config Example
 
@@ -102,11 +103,13 @@ type: {
       'path/to/concat.js': ['path/to/type2.ts',
                             'path/to/type1.ts'],
       'path/to/many/*.js': ['path/to/**/*.ts']
+    },
+    options: {
+      target: 'ES5'
     }
   },
   options: {
     module: 'amd',
-    target: 'ES5',
     style: 'eqeqeq;bitwise'
   }
 }
