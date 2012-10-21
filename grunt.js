@@ -41,9 +41,10 @@ module.exports = function(grunt) {
     type: {
       compile: {
         files: {
-          'tmp/simple.js': ['test/fixtures/type1.ts'],
-          'tmp/concat.js': ['test/fixtures/type2.ts', 'test/fixtures/type1.ts'],
-          'tmp/many/*.js': ['test/fixtures/**/*.ts']
+          'tmp/simple.js': ['test/fixtures/compile/type1.ts'],
+          'tmp/concat.js': ['test/fixtures/compile/type2.ts',
+                            'test/fixtures/compile/type1.ts'],
+          'tmp/many/*.js': ['test/fixtures/compile/**/*.ts']
         }
       },
       flatten: {
@@ -51,7 +52,23 @@ module.exports = function(grunt) {
           flatten: true
         },
         files: {
-          'tmp/flatten/*.js': ['test/fixtures/**/*.ts']
+          'tmp/flatten/*.js': ['test/fixtures/compile/**/*.ts']
+        }
+      },
+      es5: {
+        options: {
+          target: 'ES5'
+        },
+        files: {
+          'tmp/es5.js': ['test/fixtures/es5.ts']
+        }
+      },
+      amd: {
+        options: {
+          module: 'amd'
+        },
+        files: {
+          'tmp/amd.js': ['test/fixtures/amd.ts']
         }
       }
     },

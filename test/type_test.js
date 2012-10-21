@@ -5,7 +5,7 @@ module.exports.type = {
   compile: function (test) {
     'use strict';
 
-    test.expect(3);
+    test.expect(4);
 
     var actual = grunt.file.read('tmp/simple.js');
     var expected = grunt.file.read('test/expected/simple.js');
@@ -19,6 +19,10 @@ module.exports.type = {
     expected = fs.readdirSync('test/expected/many/').sort();
     test.deepEqual(expected, actual, 'should compile to directories');
 
+    actual = grunt.file.read('test/fixtures/compile/type1.js');
+    expected = grunt.file.read('test/expected/original.js');
+    test.equal(expected, actual, 'should backup conflicting files');
+
     test.done();
   },
 
@@ -30,6 +34,30 @@ module.exports.type = {
     var actual = fs.readdirSync('tmp/flatten/').sort();
     var expected = fs.readdirSync('test/expected/flatten/').sort();
     test.deepEqual(expected, actual, 'should compile to flatten directories');
+
+    test.done();
+  },
+
+  es5: function (test) {
+    'use strict';
+
+    test.expect(1);
+
+    var actual = grunt.file.read('tmp/es5.js');
+    var expected = grunt.file.read('test/expected/es5.js');
+    test.deepEqual(expected, actual, 'should compile ES5 targets');
+
+    test.done();
+  },
+
+  amd: function (test) {
+    'use strict';
+
+    test.expect(1);
+
+    var actual = grunt.file.read('tmp/amd.js');
+    var expected = grunt.file.read('test/expected/amd.js');
+    test.deepEqual(expected, actual, 'should compile to AMD modules');
 
     test.done();
   }

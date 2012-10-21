@@ -9,8 +9,9 @@
 module.exports = function(grunt) {
   'use strict';
 
-  var path = require('path');
+  var fs = require('fs');
   var os = require('os');
+  var path = require('path');
   var helpers = require('grunt-lib-contrib').init(grunt);
 
   // TODO: ditch this when grunt v0.4 is released
@@ -54,9 +55,9 @@ module.exports = function(grunt) {
   };
 
   // TODO: Use _.omit when grunt 0.4 is released
-  var removeGruntOpts = function (options) {
+  var removeInvalidOpts = function (options) {
     var copy = {};
-    var keys = ['tsc', 'basePath', 'flatten'];
+    var keys = ['tsc', 'basePath', 'flatten', 'out', 'exec'];
     for (var key in options) {
       if (!grunt.util._.contains(keys, key)) {
         copy[key] = options[key];
@@ -66,22 +67,79 @@ module.exports = function(grunt) {
   };
 
   var compile = function (tscpath, srcs, trg, options, cb) {
+    if (srcs.length === 1) {
+      compileOneToOne(tscpath, srcs[0], trg, options, cb);
+    }
+    else if (srcs.length > 1) {
+      compileManyToOne(tscpath, srcs, trg, options, cb);
+    }
+    else {
+      cb();
+    }
+  };
+
+  var tmpPath = function (filepath) {
+    var rndstr = (Math.floor(Math.random() * 1000000)).toString();
+    var name = rndstr + path.basename(filepath);
+    return path.join(os.tmpDir(), name);
+  };
+
+  var jsPath = function (filepath) {
+    return path.join(path.dirname(filepath),
+                     path.basename(filepath, path.extname(filepath)) + ".js");
+  };
+
+  var checkCompilerOutput = function (trg, error, result, success) {
+    if (error) {
+      grunt.warn(result.stderr);
+      grunt.warn(result.stdout);
+    }
+    else {
+      grunt.log.write(trg + "...");
+      grunt.log.ok();
+      if (grunt.util._.isFunction(success)) {
+        success();
+      }
+    }
+  };
+
+  var compileOneToOne = function (tscpath, src, trg, options, cb) {
+    var cmd = {
+      cmd : tscpath,
+      args : [src]
+    };
+    cmd.args.push.apply(cmd.args, helpers.optsToArgs(removeInvalidOpts(options)));
+    grunt.verbose.writeln(cmdToString(cmd));
+
+    var backupPath = '';
+    var srcpath = jsPath(src);
+    if (fs.existsSync(srcpath)) {
+      backupPath = tmpPath(srcpath);
+      grunt.file.copy(srcpath, backupPath);
+    }
+
+    grunt.util.spawn(cmd, function (error, result) {
+      checkCompilerOutput(trg, error, result, function () {
+        grunt.file.copy(srcpath, trg);
+        fs.unlinkSync(srcpath);
+      });
+      if (backupPath.length > 0) {
+        grunt.file.copy(backupPath, srcpath);
+      }
+      cb();
+    });
+  };
+
+  var compileManyToOne = function (tscpath, srcs, trg, options, cb) {
     var cmd = {
       cmd : tscpath,
       args : ['--out', trg]
     };
     cmd.args.push.apply(cmd.args, srcs);
-    cmd.args.push.apply(cmd.args, helpers.optsToArgs(removeGruntOpts(options)));
+    cmd.args.push.apply(cmd.args, helpers.optsToArgs(removeInvalidOpts(options)));
     grunt.verbose.writeln(cmdToString(cmd));
     grunt.util.spawn(cmd, function (error, result) {
-      if (error) {
-        grunt.warn(result.stderr);
-        grunt.warn(result.stdout);
-      }
-      else {
-        grunt.log.write(trg + "...");
-        grunt.log.ok();
-      }
+      checkCompilerOutput(trg, error, result);
       cb();
     });
   };
