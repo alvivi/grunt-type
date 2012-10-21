@@ -147,7 +147,7 @@ module.exports = function(grunt) {
       args : ['--out', trg]
     };
     cmd.args.push.apply(cmd.args, srcs);
-    cmd.args.push.apply(cmd.args, helpers.optsToArgs(removeInvalidOpts(options)));
+    cmd.args.push.apply(cmd.args, optsToTscArgs(options));
     grunt.verbose.writeln(cmdToString(cmd));
     grunt.util.spawn(cmd, function (error, result) {
       checkCompilerOutput(trg, error, result);
