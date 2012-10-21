@@ -2,7 +2,7 @@
  * grunt-type
  * http://gruntjs.com/
  *
- * Copyright (c) 2012 Álvaro Vilanova Vidal
+ * Copyright (c) 2012 Alvaro Vilanova
  * Licensed under the MIT license.
  */
 
