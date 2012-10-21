@@ -70,6 +70,14 @@ module.exports = function(grunt) {
         files: {
           'tmp/amd.js': ['test/fixtures/amd.ts']
         }
+      },
+      refs: {
+        options: {
+          reference: ['test/fixtures/references/*.d.ts']
+        },
+        files: {
+          'tmp/ref.js': ['test/fixtures/ref.ts']
+        }
       }
     },
 

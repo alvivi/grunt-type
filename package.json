@@ -1,10 +1,11 @@
 {
   "name": "grunt-type",
   "description": "Compile TypeScript files to JavaScript.",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "homepage": "https://github.com/alvivi/grunt-type",
   "author": {
-    "name": "Álvaro Vilanova Vidal"
+    "name": "Álvaro Vilanova Vidal",
+    "email": "alvivi@alvivi.com"
   },
   "repository": {
     "type": "git",

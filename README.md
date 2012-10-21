@@ -1,6 +1,6 @@
 # grunt-type [![Build Status](https://secure.travis-ci.org/alvivi/grunt-type.png)](http://travis-ci.org/alvivi/grunt-type)
 
-> Compile TypeScipt source code.
+> Compile TypeScipt source code
 
 ### Configuration
 
@@ -82,6 +82,11 @@ Select style checking options (examples ```'requireSemi:off'```
 `requireSemi`, `assignmentInCond`, `eqnull`, `evalOK`, `innerScopeDeclEscape`,
 `funcInLoop`, `reDeclareLocal`, `literalSubscript` and `implicitAny`. This
 options are similar to [JsHint](http://www.jshint.com/docs/) options.
+
+##### reference ```object```
+
+Add ambient references to the compilation. The value should be a filepath or
+an array of filepaths (supports [minimatch](https://github.com/isaacs/minimatch)).
 
 ##### target ```string```
 

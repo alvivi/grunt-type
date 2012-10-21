@@ -89,6 +89,17 @@ module.exports = function(grunt) {
                      path.basename(filepath, path.extname(filepath)) + ".js");
   };
 
+  var optsToTscArgs = function (options) {
+    options = removeInvalidOpts(options);
+
+    if (options.reference) {
+      var files = grunt.file.expandFiles(options.reference);
+      options.reference = files;
+    }
+
+    return helpers.optsToArgs(options);
+  };
+
   var checkCompilerOutput = function (trg, error, result, success) {
     if (error) {
       grunt.warn(result.stderr);
@@ -108,7 +119,7 @@ module.exports = function(grunt) {
       cmd : tscpath,
       args : [src]
     };
-    cmd.args.push.apply(cmd.args, helpers.optsToArgs(removeInvalidOpts(options)));
+    cmd.args.push.apply(cmd.args, optsToTscArgs(options));
     grunt.verbose.writeln(cmdToString(cmd));
 
     var backupPath = '';

@@ -60,5 +60,17 @@ module.exports.type = {
     test.deepEqual(expected, actual, 'should compile to AMD modules');
 
     test.done();
+  },
+
+  refs: function (test) {
+    'use strict';
+
+    test.expect(1);
+
+    var actual = grunt.file.read('tmp/ref.js');
+    var expected = grunt.file.read('test/expected/ref.js');
+    test.deepEqual(expected, actual, 'should compile with implicit references');
+
+    test.done();
   }
 };
