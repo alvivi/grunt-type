@@ -53,12 +53,25 @@ module.exports = function(grunt) {
     }
   };
 
-  var compile = function (tscpath, srcs, trg, cb) {
+  // TODO: Use _.omit when grunt 0.4 is released
+  var removeGruntOpts = function (options) {
+    var copy = {};
+    var keys = ['tsc', 'basePath', 'flatten'];
+    for (var key in options) {
+      if (!grunt.util._.contains(keys, key)) {
+        copy[key] = options[key];
+      }
+    }
+    return copy;
+  };
+
+  var compile = function (tscpath, srcs, trg, options, cb) {
     var cmd = {
       cmd : tscpath,
       args : ['--out', trg]
     };
     cmd.args.push.apply(cmd.args, srcs);
+    cmd.args.push.apply(cmd.args, helpers.optsToArgs(removeGruntOpts(options)));
     grunt.verbose.writeln(cmdToString(cmd));
     grunt.util.spawn(cmd, function (error, result) {
       if (error) {
@@ -77,19 +90,22 @@ module.exports = function(grunt) {
     var done = this.async();
 
     var options = helpers.options(this, {
-      style : false,
-      sourcemap : false,
-      declarations : false,
-      reference : false,
-      minw : false,
-      const : false,
-      comments : false,
-      noerroronwith : false,
-      noresolve : false,
+      basePath          : '',
+      comments          : false,
+      const             : false,
+      declarations      : false,
+      flatten           : false,
+      minw              : false,
+      module            : 'commonjs',
+      noerroronwith     : false,
+      nolib             : false,
       nooptimizemodules : false,
-      nolib : false,
-      target : 'ES3',
-      module : 'commonjs'
+      noresolve         : false,
+      reference         : false,
+      sourcemap         : false,
+      style             : false,
+      target            : 'ES3',
+      tsc               : ''
     });
     grunt.verbose.writeflags(options, 'Options');
 
@@ -129,7 +145,7 @@ module.exports = function(grunt) {
     withTscCommand(options.tsc, function (tsc) {
       grunt.util.async.forEachLimit(files, os.cpus().length, function (file, finish) {
         grunt.file.mkdir(path.dirname(file.dest));
-        compile(tsc, file.src, file.dest, function () {
+        compile(tsc, file.src, file.dest, options, function () {
           finish();
           almostDone();
         });

@@ -1,4 +1,4 @@
 
 declare module foo {
-    export function bar ();
+    export function bar () : string;
 }
