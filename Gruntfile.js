@@ -32,9 +32,9 @@ module.exports = function(grunt) {
     type: {
       main: {
         files: [
-          {src: ['test/fixtures/compile/simple.ts'], dest: 'tmp/simple.js'}
+          {src: ['test/fixtures/simple.ts'], dest: 'tmp/simple.js'}
         ]
-      },
+      }
     }
   });
 
