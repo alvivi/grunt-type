@@ -66,6 +66,17 @@ module.exports = function(grunt) {
         options: {
           'sourcemap': true
         }
+      },
+
+      declarations: {
+        files: [
+          {src: ['test/fixtures/multiple/second.ts',
+                 'test/fixtures/multiple/first.ts'],
+           dest: 'tmp/declarations'}
+        ],
+        options: {
+          'declaration': true
+        }
       }
     }
   });

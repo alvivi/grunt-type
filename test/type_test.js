@@ -90,7 +90,7 @@ exports.type = {
   options: function (test) {
     'use strict';
 
-    test.expect(2);
+    test.expect(3);
 
     test.equal(true, type('tmp/nosense', ['test/fixtures/simple.ts'], {
       nolib: true
@@ -98,7 +98,11 @@ exports.type = {
 
     var actual = fs.readdirSync('tmp/sourcemaps').sort();
     var expected = fs.readdirSync('test/expected/sourcemaps').sort();
-    test.deepEqual(expected, actual, 'should emit sourcemaps');
+    test.deepEqual(expected, actual, 'should emit sourcemaps files');
+
+    actual = fs.readdirSync('tmp/declarations').sort();
+    expected = fs.readdirSync('test/expected/declarations').sort();
+    test.deepEqual(expected, actual, 'should emit declarations files');
 
     test.done();
   }
