@@ -56,6 +56,17 @@ module.exports = function(grunt) {
            dest: 'tmp/many'}
         ]
       },
+
+      sourcemaps: {
+        files: [
+          {src: ['test/fixtures/multiple/second.ts',
+                 'test/fixtures/multiple/first.ts'],
+           dest: 'tmp/sourcemaps'}
+        ],
+        options: {
+          'sourcemap': true
+        }
+      }
     }
   });
 

@@ -193,7 +193,8 @@ module.exports = function (grunt) {
   // The Task
   grunt.registerMultiTask('type', 'Compile TypeScipt sources.', function () {
     var options = this.options({
-      nolib: false
+      nolib: false,
+      sourcemap: false
     });
     grunt.verbose.writeflags(options, 'Options');
 
@@ -210,6 +211,8 @@ module.exports = function (grunt) {
       var lib = new ts.SourceUnit(libdtsPath, null);
       env.code.push(lib);
     }
+
+    compiler.settings.mapSourceFiles = options.sourcemap;
 
     // Sources and target.
     _.each(this.files, function (filePair) {

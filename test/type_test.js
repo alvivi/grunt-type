@@ -90,11 +90,15 @@ exports.type = {
   options: function (test) {
     'use strict';
 
-    test.expect(1);
+    test.expect(2);
 
     test.equal(true, type('tmp/nosense', ['test/fixtures/simple.ts'], {
       nolib: true
     }), 'should not include lib.d.ts');
+
+    var actual = fs.readdirSync('tmp/sourcemaps').sort();
+    var expected = fs.readdirSync('test/expected/sourcemaps').sort();
+    test.deepEqual(expected, actual, 'should emit sourcemaps');
 
     test.done();
   }
