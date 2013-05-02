@@ -64,7 +64,7 @@ module.exports = function(grunt) {
            dest: 'tmp/sourcemaps'}
         ],
         options: {
-          'sourcemap': true
+          sourcemap: true
         }
       },
 
@@ -75,7 +75,16 @@ module.exports = function(grunt) {
            dest: 'tmp/declarations'}
         ],
         options: {
-          'declaration': true
+          declaration: true
+        }
+      },
+
+      comments: {
+        files: [
+          {src: ['test/fixtures/comments.ts'], dest: 'tmp/comments.js'}
+        ],
+        options: {
+          comments: true
         }
       }
     }

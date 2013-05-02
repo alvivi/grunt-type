@@ -195,7 +195,8 @@ module.exports = function (grunt) {
     var options = this.options({
       nolib: false,
       sourcemap: false,
-      declaration: false
+      declaration: false,
+      comments: false
     });
     grunt.verbose.writeflags(options, 'Options');
 
@@ -215,6 +216,7 @@ module.exports = function (grunt) {
 
     compiler.settings.mapSourceFiles = options.sourcemap;
     compiler.settings.generateDeclarationFiles = options.declaration;
+    compiler.settings.emitComments = options.comments;
 
     // Sources and target.
     _.each(this.files, function (filePair) {

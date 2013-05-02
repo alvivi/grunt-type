@@ -90,7 +90,7 @@ exports.type = {
   options: function (test) {
     'use strict';
 
-    test.expect(3);
+    test.expect(4);
 
     test.equal(true, type('tmp/nosense', ['test/fixtures/simple.ts'], {
       nolib: true
@@ -103,6 +103,10 @@ exports.type = {
     actual = fs.readdirSync('tmp/declarations').sort();
     expected = fs.readdirSync('test/expected/declarations').sort();
     test.deepEqual(expected, actual, 'should emit declarations files');
+
+    actual = grunt.file.read('tmp/comments.js');
+    expected = grunt.file.read('test/expected/comments.js');
+    test.equal(expected, actual, 'should compile one to one sources');
 
     test.done();
   }
