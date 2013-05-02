@@ -90,7 +90,7 @@ exports.type = {
   options: function (test) {
     'use strict';
 
-    test.expect(4);
+    test.expect(5);
 
     test.equal(true, type('tmp/nosense', ['test/fixtures/simple.ts'], {
       nolib: true
@@ -107,6 +107,10 @@ exports.type = {
     actual = grunt.file.read('tmp/comments.js');
     expected = grunt.file.read('test/expected/comments.js');
     test.equal(expected, actual, 'should compile one to one sources');
+
+    actual = grunt.file.read('tmp/es5.js');
+    expected = grunt.file.read('test/expected/es5.js');
+    test.equal(expected, actual, 'should emit ECMAScript 5');
 
     test.done();
   }

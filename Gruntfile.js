@@ -86,6 +86,15 @@ module.exports = function(grunt) {
         options: {
           comments: true
         }
+      },
+
+      target: {
+        files: [
+          {src: ['test/fixtures/es5.ts'], dest: 'tmp/es5.js'}
+        ],
+        options: {
+          target: 'es5'
+        }
       }
     }
   });

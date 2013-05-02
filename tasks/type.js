@@ -196,7 +196,8 @@ module.exports = function (grunt) {
       nolib: false,
       sourcemap: false,
       declaration: false,
-      comments: false
+      comments: false,
+      target: 'es3'
     });
     grunt.verbose.writeflags(options, 'Options');
 
@@ -217,6 +218,15 @@ module.exports = function (grunt) {
     compiler.settings.mapSourceFiles = options.sourcemap;
     compiler.settings.generateDeclarationFiles = options.declaration;
     compiler.settings.emitComments = options.comments;
+
+    if (options.target === 'es3') {
+      compiler.settings.codeGenTarget  = ts.LanguageVersion.EcmaScript3;
+    } else if (options.target === 'es5') {
+      compiler.settings.codeGenTarget  = ts.LanguageVersion.EcmaScript5;
+    } else {
+      grunt.fail.warn(_.sprintf('ECMAScript target version %s not supported. ' +
+                      'Using default "ES3" code generation', options.target));
+    }
 
     // Sources and target.
     _.each(this.files, function (filePair) {
