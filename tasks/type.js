@@ -13,200 +13,214 @@ module.exports = function (grunt) {
   var _ = grunt.util._;
   var events = require('events');
   var path = require('path');
-  var url = require('url');
+  var fs = require('fs');
+  var vm = require('vm');
 
+  // Workaround TypeScript distribution oddness.
+  var ts = (function () {
+    var filename = require.resolve('typescript');
+    var module = {};
+    vm.runInNewContext(fs.readFileSync(filename, 'utf8'), module);
+    return module.TypeScript;
+  }) ();
 
-  // Misc
+  // The path to lib.d.ts.
+  var libdtsPath = (function () {
+    return path.join(path.dirname(require.resolve('typescript')), 'lib.d.ts');
+  }) ();
 
-  // asyncly executes a taks asynchronously with a new event emitter.
-  var asyncly = function (task) {
-    var emitter = new events.EventEmitter();
-    setTimeout(function () {
-      task(emitter);
+  // Grunt ITextWriter implementatio.
+  var GruntWriter = function (wrapper) {
+    this.buffer = '';
+    this.wrapper = wrapper;
+  };
+
+  GruntWriter.prototype.Write = function (str) {
+    this.buffer += str;
+  };
+
+  GruntWriter.prototype.WriteLine = function (str) {
+    this.buffer = this.buffer + str + '\n';
+  };
+
+  GruntWriter.prototype.Close = function () {
+    this.wrapper(this.buffer);
+  };
+
+  // Grunt IO host. Implements TypeScript.IIO interface.
+  var GruntHost = function () {
+    this.arguments = [];
+    this.stderr = new GruntWriter(grunt.fail.fatal);
+    this.stdout = new GruntWriter(grunt.verbose.write);
+  };
+
+  GruntHost.unexpected = function (method) {
+    return function () {
+      grunt.fail.fatal(_.sprintf('Unexpected use of GruntHost\'s %s method.\n' +
+        'Please report this as a bug at: ' +
+        'https://github.com/alvivi/grunt-type/issues'.cyan , method));
+    };
+  };
+
+  GruntHost.prototype.createFile = function (path, useUTF8) {
+    var options = useUTF8 ? {encoding: 'utf-8'} : {};
+    return new GruntWriter(function (content) {
+      grunt.file.write(path, content, options);
     });
-    return emitter;
   };
 
-  // http returns http or https module based on an URI.
-  var http = function (uri) {
-    var protocol = _.trim(url.parse(uri).protocol, ':');
-    if (_.isBoolean(http.mods[protocol]) && http.mods[protocol]) {
-      http.mods[protocol] = require(protocol);
+  GruntHost.prototype.directoryExists = grunt.file.exists;
+
+  GruntHost.prototype.dirName = path.dirname;
+
+  GruntHost.prototype.fileExists = grunt.file.exists;
+
+  // Implementation taken from typescript sourcecode
+  GruntHost.prototype.findFile = function(rootPath, partialFilePath) {
+    var trg = path.join(rootPath, partialFilePath);
+    while (true) {
+      if (fs.existsSync(trg)) {
+        try {
+          var content = this.readFile(trg);
+          return {content: content, path: trg};
+        } catch (err) {}
+      } else {
+        var parentPath = path.resolve(rootPath, "..");
+        if (rootPath === parentPath) {
+            return null;
+        }
+        else {
+            rootPath = parentPath;
+            trg = path.resolve(rootPath, partialFilePath);
+        }
+      }
     }
-    return http.mods[protocol];
   };
-  http.mods = {'http': true, 'https': true};
 
-  // wget download the contents of file over HTTP / HTTPS.
-  var wget = function (uri) {
-    return asyncly(function (e) {
-      var client = http(uri);
-      if (!client) {
-        e.emit('error', _.sprintf('Invalid protocol (%s)', uri));
+  GruntHost.prototype.readFile = grunt.file.read;
+
+  GruntHost.prototype.resolvePath = path.resolve;
+
+  // Unexpected methods
+  GruntHost.prototype.createDirectory = GruntHost.unexpected('createDirectory');
+  GruntHost.prototype.deleteFile = GruntHost.unexpected('deleteFile');
+  GruntHost.prototype.dir = GruntHost.unexpected('dir');
+  GruntHost.prototype.getExecutingFilePath = GruntHost.unexpected('getExecutingFilePath');
+  GruntHost.prototype.print = GruntHost.unexpected('print');
+  GruntHost.prototype.printLine = GruntHost.unexpected('printLine');
+  GruntHost.prototype.quit = GruntHost.unexpected('quit');
+  GruntHost.prototype.run = GruntHost.unexpected('run');
+  GruntHost.prototype.watchFile = GruntHost.unexpected('watchFile');
+  GruntHost.prototype.writeFile = GruntHost.unexpected('writeFile');
+
+  // resolve resolves TypeScript source contents and dependencies.
+  var resolve = function (env, ioHost) {
+    var renv = new ts.CompilationEnvironment(env.compilationSettings, ioHost);
+    var resolver = new ts.CodeResolver(env);
+    var resolved = {};
+
+    var dispatcher = {
+      postResolutionError: function(file, ref, msg) {
+        grunt.fail.fatal(_.sprintf("%s (%d,%d): %s", file, ref.line + 1,
+                         ref.character + 1, msg));
+      },
+      postResolution: function(path, code) {
+        if (!resolved[path]) {
+          renv.code.push(code);
+          resolved[path] = true;
+        }
+      }
+    };
+
+    _.each(env.code, function (code) {
+      var path = ts.switchToForwardSlashes(ioHost.resolvePath(code.path));
+      resolver.resolveCode(path, "", false, dispatcher);
+    });
+
+    return renv;
+  };
+
+  // compile do actual compilation.
+  var compile = function (compiler, env) {
+    var anyError = false;
+
+    // Syntax check
+    _.each(env.code, function (code) {
+      if (code.content === null) {
         return;
       }
-      client.get(uri, function (r) {
-        if (r.statusCode >= 400) {
-          e.emit('error', _.sprintf('Error retriving %s (%d code)', uri,
-                 r.statusCode));
-          return;
-        }
-        var data = '';
-        r.on('data', function (chunk) { data += chunk; });
-        r.on('end', function () { e.emit('done', data); });
-      }).on('error', function (err) {
-        e.emit('error', err);
-      });
+      var snapshot = ts.ScriptSnapshot.fromString(code.content);
+      compiler.addSourceUnit(code.path, snapshot, 0, false, code.referencedFiles);
+      var diag = compiler.getSyntacticDiagnostics(code.path);
+      compiler.reportDiagnostics(diag, env.ioHost.stderr);
+      anyError = anyError || (diag.length > 0);
     });
-  };
+    if (anyError) {
+      env.ioHost.stderr.Close();
+      return;
+    }
 
-  // wgets is a parallel version of wget.
-  var wgets = function (uris) {
-    return asyncly(function (e) {
-      var cs = {};
-      var done = _.after(uris.length, function () {
-        e.emit('done', cs);
-      });
-      _.each(uris, function (uri) {
-        wget(uri).on('done', function (data) {
-          cs[path.basename(uri)] = data;
-          done();
-        }).on('error', function (e) {
-          e.emit('error', e);
-        });
-      });
-    });
-  };
-
-
-  // Environment
-
-  var tsDir = path.join(__dirname, '.tsc');
-  var tsDist = function (version) { return path.join(tsDir, version); };
-  var tsTscPath = function (version) {
-    return path.join(tsDist(version), 'tsc.js');
-  };
-
-
-  // index gets the ts distribution index and keep it updated.
-  var index = function () {
-    return asyncly(function (e) {
-      if (grunt.file.exists(index.filepath)) {
-        var idx = grunt.file.readJSON(index.filepath);
-        e.emit('done', idx);
-        wget(index.url).on('done', function (data) {
-          var newIdx = JSON.parse(data);
-          if (new Date(idx.updated) < new Date(newIdx.updated)) {
-            grunt.log.verbose.writeln('TypeScript indexes updated');
-            grunt.file.write(index.filepath, data);
-          }
-        });
-      } else {
-        wget(index.url).on('done', function (data) {
-          e.emit('done', JSON.parse(data));
-          grunt.file.write(index.filepath, data);
-        }).on('error', function (err) {
-          e.emit('error', err);
-        });
+    // Type check
+    compiler.pullTypeCheck();
+    var files = compiler.fileNameToDocument.getAllKeys();
+    _.each(files, function (file) {
+      var diag = compiler.getSemanticDiagnostics(file);
+      if (diag.length > 0) {
+        compiler.reportDiagnostics(diag, env.ioHost.stderr);
+        anyError = true;
       }
     });
+
+    if (anyError) {
+      env.ioHost.stderr.Close();
+      return;
+    }
+
+    // Emit JavaScript
+    var mapInputToOutput = function (inputFile, outputFile) {
+      env.inputFileNameToOutputFileName.addOrUpdate(inputFile, outputFile);
+    };
+    compiler.emitAll(env.ioHost, mapInputToOutput);
+    var diag = compiler.emitAllDeclarations();
+    compiler.reportDiagnostics(diag, env.ioHost.stderr);
+
+    if (diag.length > 0) {
+      env.ioHost.stderr.Close();
+      return;
+    }
   };
-  index.url = 'https://dl.dropboxusercontent.com/u/9970823/versions.json';
-  index.filepath = path.join(tsDir, 'index.json');
-
-  // dist ensures that the ts distribution environment (compiler, definitions,
-  // etc.) is available in the system.
-  var dist = function (version) {
-    return asyncly(function (e) {
-      index().on('done', function (idx) {
-        version = version || idx.default;
-        var files = idx.sources[version];
-        if (!_.isArray(files)) {
-          e.emit('error', _.sprintf('TypeScript version "%s" not found',
-                 version));
-          return;
-        }
-        if (grunt.file.exists(tsDist(version))) {
-          e.emit('done', version);
-          return;
-        }
-        var done = _.after(_.keys(files).length, function () {
-          e.emit('done', version);
-        });
-        _.each(files, function (uri) {
-          wget(uri).on('done', function (content) {
-            var name = path.basename(uri);
-            var filepath = path.join(tsDist(version), name);
-            grunt.file.write(filepath, content);
-            done();
-          }).on('error', function (err) {
-            e.emit('error', err);
-          });
-        });
-      }).on('error', function (err) {
-        e.emit('error', err);
-      });
-    });
-  };
-
-  // typescript provides the typescript compiler service.
-  var typescript = function (version) {
-    return asyncly(function (e) {
-      dist(version).on('done', function (version) {
-        e.emit('done', require(tsTscPath(version)), version);
-      }).on('error', function (err) {
-        e.emit('error', err);
-      });
-    });
-  };
-
-
-  // Compiler interaction
-
-  var FakeIO = function (version) {
-    this.arguments = [];
-    this.__path = tsTscPath(version);
-  };
-
-  FakeIO.mimic = _.once(function (io) {
-    _.extend(FakeIO.prototype, io);
-    _.extend(FakeIO.prototype, {
-      getExecutingFilePath: function () {
-        return this.__path;
-      }
-    });
-  });
-
 
   // The Task
-
   grunt.registerMultiTask('type', 'Compile TypeScipt sources.', function () {
-    var task = this;
-    var done = this.async();
-
     var options = this.options({
+      nolib: false
     });
     grunt.verbose.writeflags(options, 'Options');
 
-    typescript(options.version).on('done', function (ts, version) {
-      FakeIO.mimic(ts.IO);
-      var io = new FakeIO(version);
-      var compiler = new ts.BatchCompiler(io);
+    var gruntHost = new GruntHost();
+    var compiler = new ts.TypeScriptCompiler();
+    var env = new ts.CompilationEnvironment(compiler.settings, gruntHost);
 
-      task.files.forEach(function (filePair) {
-        if (filePair.src.length <= 0) {
-          grunt.fail.warn(_.sprintf('No sources for %s.', filePair.dest));
-          return;
-        }
-        filePair.src.forEach(function (src) {
-          io.arguments.push(src);
-        });
 
-        io.arguments.push('--out', filePair.dest);
-        compiler.batchCompile();
+    // nolib option.
+    if (options.nolib) {
+      compiler.settings.useDefaultLib = false;
+    } else {
+      compiler.settings.useDefaultLib = true;
+      var lib = new ts.SourceUnit(libdtsPath, null);
+      env.code.push(lib);
+    }
+
+    // Sources and target.
+    _.each(this.files, function (filePair) {
+      compiler.settings.outputOption = filePair.dest;
+      _.each(filePair.src, function (srcpath) {
+        var src = new ts.SourceUnit(srcpath, null);
+        env.code.push(src);
       });
-    }).on('error', function (err) {
-      grunt.fail.fatal(err);
     });
+
+    env = resolve(env, gruntHost);
+    compile(compiler, env);
   });
 };
