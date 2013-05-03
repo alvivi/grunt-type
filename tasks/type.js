@@ -29,7 +29,7 @@ module.exports = function (grunt) {
     return path.join(path.dirname(require.resolve('typescript')), 'lib.d.ts');
   }) ();
 
-  // Grunt ITextWriter implementatio.
+  // Grunt TypeScript.ITextWriter implementation.
   var GruntWriter = function (wrapper) {
     this.buffer = '';
     this.wrapper = wrapper;
@@ -75,7 +75,7 @@ module.exports = function (grunt) {
 
   GruntHost.prototype.fileExists = grunt.file.exists;
 
-  // Implementation taken from typescript sourcecode
+  // Implementation taken from typescript sourcecode.
   GruntHost.prototype.findFile = function(rootPath, partialFilePath) {
     var trg = path.join(rootPath, partialFilePath);
     while (true) {
@@ -101,7 +101,7 @@ module.exports = function (grunt) {
 
   GruntHost.prototype.resolvePath = path.resolve;
 
-  // Unexpected methods
+  // Unexpected methods.
   GruntHost.prototype.createDirectory = GruntHost.unexpected('createDirectory');
   GruntHost.prototype.deleteFile = GruntHost.unexpected('deleteFile');
   GruntHost.prototype.dir = GruntHost.unexpected('dir');
@@ -197,7 +197,8 @@ module.exports = function (grunt) {
       sourcemap: false,
       declaration: false,
       comments: false,
-      target: 'es3'
+      target: 'es3',
+      module: 'commonjs'
     });
     grunt.verbose.writeflags(options, 'Options');
 
@@ -219,6 +220,7 @@ module.exports = function (grunt) {
     compiler.settings.generateDeclarationFiles = options.declaration;
     compiler.settings.emitComments = options.comments;
 
+    // target option.
     if (options.target === 'es3') {
       compiler.settings.codeGenTarget  = ts.LanguageVersion.EcmaScript3;
     } else if (options.target === 'es5') {
@@ -228,8 +230,24 @@ module.exports = function (grunt) {
                       'Using default "ES3" code generation', options.target));
     }
 
+    // module option.
+    options.module = options.module.toLowerCase();
+    if (options.module === 'commonjs' || options.module === 'node') {
+      compiler.settings.moduleGenTarget = ts.ModuleGenTarget.Synchronous;
+    } else if (options.module === 'amd') {
+      compiler.settings.moduleGenTarget = ts.ModuleGenTarget.Asynchronous;
+    } else {
+      grunt.fail.warn(_.sprintf('Module code generation %s is not supported. ' +
+                   'Using default "commonjs" code generation', options.module));
+    }
+
     // Sources and target.
     _.each(this.files, function (filePair) {
+      // Asynchronous modules are incompatible to emitting one single file.
+      if (options.module === 'amd' && path.extname(filePair.dest) !== '') {
+        grunt.fail.fatal('Cannot compile dynamic modules when emitting into ' +
+                         'single file');
+      }
       compiler.settings.outputOption = filePair.dest;
       _.each(filePair.src, function (srcpath) {
         var src = new ts.SourceUnit(srcpath, null);
@@ -239,5 +257,6 @@ module.exports = function (grunt) {
 
     env = resolve(env, gruntHost);
     compile(compiler, env);
+    // gruntHost.stdout.Close();
   });
 };

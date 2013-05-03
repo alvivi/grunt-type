@@ -95,6 +95,15 @@ module.exports = function(grunt) {
         options: {
           target: 'es5'
         }
+      },
+
+      module: {
+        files: [
+          {src: ['test/fixtures/amd.ts'], dest: 'tmp/'}
+        ],
+        options: {
+          module: 'amd'
+        }
       }
     }
   });

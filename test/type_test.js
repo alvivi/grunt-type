@@ -90,7 +90,7 @@ exports.type = {
   options: function (test) {
     'use strict';
 
-    test.expect(5);
+    test.expect(7);
 
     test.equal(true, type('tmp/nosense', ['test/fixtures/simple.ts'], {
       nolib: true
@@ -111,6 +111,14 @@ exports.type = {
     actual = grunt.file.read('tmp/es5.js');
     expected = grunt.file.read('test/expected/es5.js');
     test.equal(expected, actual, 'should emit ECMAScript 5');
+
+    actual = grunt.file.read('tmp/amd.js');
+    expected = grunt.file.read('test/expected/amd.js');
+    test.equal(expected, actual, 'should emit AMD module declaration');
+
+    test.equal(true, type('tmp/amd2.js', ['test/fixtures/amd.ts'], {
+      module: 'amd'
+    }), 'should not compile dynamic modules emitting a single file');
 
     test.done();
   }
