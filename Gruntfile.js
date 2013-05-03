@@ -43,24 +43,22 @@ module.exports = function(grunt) {
 
       concat: {
         files: [
-          {src: ['test/fixtures/multiple/second.ts',
-                 'test/fixtures/multiple/first.ts'],
+          {src: ['test/fixtures/many/*.ts'],
            dest: 'tmp/concat.js'}
         ]
       },
 
       many: {
         files: [
-          {src: ['test/fixtures/multiple/second.ts',
-                 'test/fixtures/multiple/first.ts'],
+          {src: ['test/fixtures/many/**/*.ts'],
            dest: 'tmp/many'}
         ]
       },
 
       sourcemaps: {
         files: [
-          {src: ['test/fixtures/multiple/second.ts',
-                 'test/fixtures/multiple/first.ts'],
+          {src: ['test/fixtures/many/second.ts',
+                 'test/fixtures/many/first.ts'],
            dest: 'tmp/sourcemaps'}
         ],
         options: {
@@ -70,8 +68,8 @@ module.exports = function(grunt) {
 
       declarations: {
         files: [
-          {src: ['test/fixtures/multiple/second.ts',
-                 'test/fixtures/multiple/first.ts'],
+          {src: ['test/fixtures/many/second.ts',
+                 'test/fixtures/many/first.ts'],
            dest: 'tmp/declarations'}
         ],
         options: {
