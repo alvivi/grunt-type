@@ -90,7 +90,7 @@ exports.type = {
   options: function (test) {
     'use strict';
 
-    test.expect(7);
+    test.expect(8);
 
     test.equal(true, type('tmp/nosense', ['test/fixtures/simple.ts'], {
       nolib: true
@@ -116,9 +116,13 @@ exports.type = {
     expected = grunt.file.read('test/expected/amd.js');
     test.equal(expected, actual, 'should emit AMD module declaration');
 
-    test.equal(true, type('tmp/amd2.js', ['test/fixtures/amd.ts'], {
+    test.equal(true, type('tmp/nosense.js', ['test/fixtures/amd.ts'], {
       module: 'amd'
     }), 'should not compile dynamic modules emitting a single file');
+
+    test.equal(true, type('tmp/nosense.js', ['test/fixtures/bool.ts'], {
+      disallowbool: true
+    }), 'should disallow bool');
 
     test.done();
   }

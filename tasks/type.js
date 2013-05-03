@@ -198,7 +198,8 @@ module.exports = function (grunt) {
       declaration: false,
       comments: false,
       target: 'es3',
-      module: 'commonjs'
+      module: 'commonjs',
+      disallowbool: false
     });
     grunt.verbose.writeflags(options, 'Options');
 
@@ -206,6 +207,10 @@ module.exports = function (grunt) {
     var compiler = new ts.TypeScriptCompiler();
     var env = new ts.CompilationEnvironment(compiler.settings, gruntHost);
 
+    compiler.settings.mapSourceFiles = options.sourcemap;
+    compiler.settings.generateDeclarationFiles = options.declaration;
+    compiler.settings.emitComments = options.comments;
+    compiler.settings.disallowBool = options.disallowbool;
 
     // nolib option.
     if (options.nolib) {
@@ -215,10 +220,6 @@ module.exports = function (grunt) {
       var lib = new ts.SourceUnit(libdtsPath, null);
       env.code.push(lib);
     }
-
-    compiler.settings.mapSourceFiles = options.sourcemap;
-    compiler.settings.generateDeclarationFiles = options.declaration;
-    compiler.settings.emitComments = options.comments;
 
     // target option.
     if (options.target === 'es3') {
@@ -257,6 +258,5 @@ module.exports = function (grunt) {
 
     env = resolve(env, gruntHost);
     compile(compiler, env);
-    // gruntHost.stdout.Close();
   });
 };
