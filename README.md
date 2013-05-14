@@ -20,7 +20,7 @@ Once the plugin has been installed, it may be enabled inside your Gruntfile with
 this line of JavaScript:
 
 ```js
-grunt.loadNpmTasks('grunt-contrib-copy');
+grunt.loadNpmTasks('grunt-type');
 ```
 
 *This plugin was designed to work with Grunt 0.4.x and TypeScript 0.9.x
