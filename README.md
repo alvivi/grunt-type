@@ -53,7 +53,7 @@ Emit comments to output.
 
 ##### target ```string```
 
-Specify ECMAScript target version: ```'ES3'``` (default), or ```'ES3'```.
+Specify ECMAScript target version: ```'ES3'``` (default), or ```'ES5'```.
 
 ##### module ```string```
 
