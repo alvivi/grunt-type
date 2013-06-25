@@ -29,6 +29,31 @@ module.exports = function (grunt) {
     return path.join(path.dirname(require.resolve('typescript')), 'lib.d.ts');
   }) ();
 
+  // ByteOrderMark Enum used by FileInformation.
+  var ByteOrderMark;
+  (function (ByteOrderMark) {
+      ByteOrderMark[ByteOrderMark['None'] = 0] = 'None';
+      ByteOrderMark[ByteOrderMark['Utf8'] = 1] = 'Utf8';
+      ByteOrderMark[ByteOrderMark['Utf16BigEndian'] = 2] = 'Utf16BigEndian';
+      ByteOrderMark[ByteOrderMark['Utf16LittleEndian'] = 3] = 'Utf16LittleEndian';
+  })(ByteOrderMark || (ByteOrderMark = {}));
+
+  // FileInformation class used by GruntHost.
+  var FileInformation = (function () {
+    function FileInformation(contents, byteOrderMark) {
+        this._contents = contents;
+        this._byteOrderMark = byteOrderMark;
+    }
+    FileInformation.prototype.contents = function () {
+        return this._contents;
+    };
+
+    FileInformation.prototype.byteOrderMark = function () {
+        return this._byteOrderMark;
+    };
+    return FileInformation;
+  })();
+
   // Grunt TypeScript.ITextWriter implementation.
   var GruntWriter = function (wrapper) {
     this.buffer = '';
@@ -62,14 +87,9 @@ module.exports = function (grunt) {
     };
   };
 
-  GruntHost.prototype.createFile = function (path, useUTF8) {
-    var options = useUTF8 ? {encoding: 'utf-8'} : {};
-    return new GruntWriter(function (content) {
-      grunt.file.write(path, content, options);
-    });
+  GruntHost.prototype.directoryExists = function (path) {
+    return fs.existsSync(path) && fs.statSync(path).isDirectory();
   };
-
-  GruntHost.prototype.directoryExists = grunt.file.exists;
 
   GruntHost.prototype.dirName = path.dirname;
 
@@ -80,12 +100,9 @@ module.exports = function (grunt) {
     var trg = path.join(rootPath, partialFilePath);
     while (true) {
       if (fs.existsSync(trg)) {
-        try {
-          var content = this.readFile(trg);
-          return {content: content, path: trg};
-        } catch (err) {}
+        return { fileInformation: this.readFile(path), path: path };
       } else {
-        var parentPath = path.resolve(rootPath, "..");
+        var parentPath = path.resolve(rootPath, '..');
         if (rootPath === parentPath) {
             return null;
         }
@@ -97,9 +114,48 @@ module.exports = function (grunt) {
     }
   };
 
-  GruntHost.prototype.readFile = grunt.file.read;
+  // Code extracted from TypeScript source (/compiler/core/environment.ts)
+  GruntHost.prototype.readFile = function (file) {
+    var buffer = fs.readFileSync(file);
+    switch (buffer[0]) {
+      case 0xFE:
+        if (buffer[1] === 0xFF) {
+          // utf16-be. Reading the buffer as big endian is not supported, so convert it to
+          // Little Endian first
+          var i = 0;
+          while ((i + 1) < buffer.length) {
+            var temp = buffer[i];
+            buffer[i] = buffer[i + 1];
+            buffer[i + 1] = temp;
+            i += 2;
+          }
+          return new FileInformation(buffer.toString('ucs2', 2), ByteOrderMark.Utf16BigEndian);
+        }
+        break;
+
+      case 0xFF:
+        if (buffer[1] === 0xFE) {
+          // utf16-le
+          return new FileInformation(buffer.toString('ucs2', 2), ByteOrderMark.Utf16LittleEndian);
+        }
+        break;
+
+      case 0xEF:
+        if (buffer[1] === 0xBB) {
+          // utf-8
+          return new FileInformation(buffer.toString('utf8', 3), ByteOrderMark.Utf8);
+        }
+      }
+
+      // Default behaviour
+      return new FileInformation(buffer.toString('utf8', 0), ByteOrderMark.None);
+  };
 
   GruntHost.prototype.resolvePath = path.resolve;
+
+  GruntHost.prototype.writeFile = function (path, contents, writeByteOrderMark) {
+    grunt.file.write(path, contents, 'utf8');
+  };
 
   // Unexpected methods.
   GruntHost.prototype.createDirectory = GruntHost.unexpected('createDirectory');
@@ -111,7 +167,6 @@ module.exports = function (grunt) {
   GruntHost.prototype.quit = GruntHost.unexpected('quit');
   GruntHost.prototype.run = GruntHost.unexpected('run');
   GruntHost.prototype.watchFile = GruntHost.unexpected('watchFile');
-  GruntHost.prototype.writeFile = GruntHost.unexpected('writeFile');
 
   // resolve resolves TypeScript source contents and dependencies.
   var resolve = function (env, ioHost) {
@@ -119,11 +174,14 @@ module.exports = function (grunt) {
     var resolver = new ts.CodeResolver(env);
     var resolved = {};
 
+    var errorReporter = {
+      addDiagnostic: function (diagnostic) {
+        env.ioHost.stderr.WriteLine(diagnostic.message());
+      }
+    };
+
     var dispatcher = {
-      postResolutionError: function(file, ref, msg) {
-        grunt.fail.fatal(_.sprintf("%s (%d,%d): %s", file, ref.line + 1,
-                         ref.character + 1, msg));
-      },
+      errorReporter: errorReporter,
       postResolution: function(path, code) {
         if (!resolved[path]) {
           renv.code.push(code);
@@ -134,7 +192,7 @@ module.exports = function (grunt) {
 
     _.each(env.code, function (code) {
       var path = ts.switchToForwardSlashes(ioHost.resolvePath(code.path));
-      resolver.resolveCode(path, "", false, dispatcher);
+      resolver.resolveCode(path, '', false, dispatcher);
     });
 
     return renv;
@@ -144,15 +202,21 @@ module.exports = function (grunt) {
   var compile = function (compiler, env) {
     var anyError = false;
 
+    var errorReporter = {
+      addDiagnostic: function (diagnostic) {
+        env.ioHost.stderr.WriteLine(diagnostic.message());
+      }
+    };
+
     // Syntax check
     _.each(env.code, function (code) {
       if (code.content === null) {
         return;
       }
-      var snapshot = ts.ScriptSnapshot.fromString(code.content);
+      var snapshot = ts.ScriptSnapshot.fromString(code.fileInformation.contents());
       compiler.addSourceUnit(code.path, snapshot, 0, false, code.referencedFiles);
       var diag = compiler.getSyntacticDiagnostics(code.path);
-      compiler.reportDiagnostics(diag, env.ioHost.stderr);
+      compiler.reportDiagnostics(diag, errorReporter);
       anyError = anyError || (diag.length > 0);
     });
     if (anyError) {
@@ -166,7 +230,7 @@ module.exports = function (grunt) {
     _.each(files, function (file) {
       var diag = compiler.getSemanticDiagnostics(file);
       if (diag.length > 0) {
-        compiler.reportDiagnostics(diag, env.ioHost.stderr);
+        compiler.reportDiagnostics(diag, errorReporter);
         anyError = true;
       }
     });
@@ -180,9 +244,16 @@ module.exports = function (grunt) {
     var mapInputToOutput = function (inputFile, outputFile) {
       env.inputFileNameToOutputFileName.addOrUpdate(inputFile, outputFile);
     };
-    compiler.emitAll(env.ioHost, mapInputToOutput);
-    var diag = compiler.emitAllDeclarations();
-    compiler.reportDiagnostics(diag, env.ioHost.stderr);
+    var diag = compiler.emitAll(env.ioHost, mapInputToOutput);
+    compiler.reportDiagnostics(diag, errorReporter);
+    if (diag.length > 0) {
+      env.ioHost.stderr.Close();
+      return;
+    }
+
+    // Emit declarations
+    diag = compiler.emitAllDeclarations();
+    compiler.reportDiagnostics(diag, errorReporter);
 
     if (diag.length > 0) {
       env.ioHost.stderr.Close();
@@ -251,8 +322,8 @@ module.exports = function (grunt) {
       }
       compiler.settings.outputOption = filePair.dest;
       _.each(filePair.src, function (srcpath) {
-        var src = new ts.SourceUnit(srcpath, null);
-        env.code.push(src);
+        var code = new ts.SourceUnit(srcpath, null);
+        env.code.push(code);
       });
     });
 

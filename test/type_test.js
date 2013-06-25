@@ -106,7 +106,7 @@ exports.type = {
 
     actual = grunt.file.read('tmp/comments.js');
     expected = grunt.file.read('test/expected/comments.js');
-    test.equal(expected, actual, 'should compile one to one sources');
+    test.equal(expected, actual, 'should emit comments');
 
     actual = grunt.file.read('tmp/es5.js');
     expected = grunt.file.read('test/expected/es5.js');

@@ -5,4 +5,5 @@ var Simple;
     }
     Simple.main = main;
 })(Simple || (Simple = {}));
+
 Simple.main();

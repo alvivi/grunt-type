@@ -13,4 +13,5 @@ var second;
     }
     second.main = main;
 })(second || (second = {}));
+
 second.main();

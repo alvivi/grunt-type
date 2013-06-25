@@ -37,9 +37,12 @@
     "grunt": "~0.4.0"
   },
   "keywords": [
-    "gruntplugin"
+    "gruntplugin",
+    "typescript",
+    "grunt",
+    "type"
   ],
   "dependencies": {
-    "typescript": "git://github.com/alvivi/TypeScript-0.9.0a.git"
+    "typescript": "~0.9.0"
   }
 }

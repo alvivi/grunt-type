@@ -1,7 +1,8 @@
 var test;
 (function (test) {
     var Foo = (function () {
-        function Foo() { }
+        function Foo() {
+        }
         Object.defineProperty(Foo.prototype, "Name", {
             get: function () {
                 return 0;
@@ -10,5 +11,5 @@ var test;
             configurable: true
         });
         return Foo;
-    })();    
+    })();
 })(test || (test = {}));
